@@ -8,8 +8,8 @@ static uint8_t  g_modbus_send_idx = 0;
 static uint8_t  g_modbus_send[MODBUS_SEND_BUF_SIZE];
 
 #define MODBUS_WAIT_SEND(n)  do { \
-    g_modbus_wait_send = (n); \
-    g_modbus_send_idx = 0;    \
+    g_modbus_wait_send = (n);     \
+    g_modbus_send_idx = 0;        \
 } while(0)
 
 enum {
@@ -23,29 +23,29 @@ static uint8_t g_lock_val  = 0;
 static uint8_t g_lock_st   = 0;
 
 #define DATA_LOCK(t) do { \
-    g_lock_st = (t);  \
+    g_lock_st = (t);      \
 } while(0)
 
 #define IS_DATA_LOCK() (g_lock_st != 0)
 
 #define DATA_LOCK_PUSH(c,r,v) do {  \
-    g_lock_code = (c);          \
-    g_lock_reg  = (r);          \
-    g_lock_val  = (v);          \
+    g_lock_code = (c);              \
+    g_lock_reg  = (r);              \
+    g_lock_val  = (v);              \
 } while(0)
 
-#define DATA_UNLOCK(t) do {                                       \
-    if(IS_DATA_LOCK()) {                                      \
+#define DATA_UNLOCK(t) do {                               \
+    if(IS_DATA_LOCK()) {                                  \
         g_lock_st = (0);                                  \
         switch(g_lock_code) {                             \
             case MODBUS_FC_READ_HOLDING_REGISTERS:        \
-            modbus_ack_read(g_lock_reg, g_lock_val);  \
-            break;                                    \
+            modbus_ack_read(g_lock_reg, g_lock_val);      \
+            break;                                        \
             case MODBUS_FC_WRITE_SINGLE_REGISTER:         \
-            modbus_ack_write(g_lock_reg, g_lock_val); \
-            break;                                    \
+            modbus_ack_write(g_lock_reg, g_lock_val);     \
+            break;                                        \
         }                                                 \
-    }                                                         \
+    }                                                     \
 } while(0)
 
 /* Table of CRC values for highorder byte */
