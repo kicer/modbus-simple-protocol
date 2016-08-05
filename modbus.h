@@ -19,7 +19,8 @@
 #define MODBUS_SEND_BUF_SIZE                (5+MODBUS_REGS_CNT+MODBUS_REGS_CNT)
 
 int modbus_init(uint8_t dev_id);
-int modbus_set_reg(uint16_t reg_addr, uint16_t reg_val);
+int modbus_write_reg(uint16_t reg_addr, uint16_t reg_val);
+uint16_t modbus_read_reg(uint16_t reg_addr);
 
 void modbus_recv_byte(uint8_t ch);
 int  modbus_ack_byte(void);

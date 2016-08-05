@@ -87,12 +87,22 @@ int modbus_init(uint8_t dev_id) {
     return 0;
 }
 
-int modbus_set_reg(uint16_t reg_addr, uint16_t reg_val) {
+int modbus_write_reg(uint16_t reg_addr, uint16_t reg_val) {
     if(reg_addr < MODBUS_REGS_CNT) {
         g_modbus_regs[reg_addr] = reg_val;
     }
 
     return 0;
+}
+
+uint16_t modbus_read_reg(uint16_t reg_addr) {
+    uint16_t reg_val = 0;
+
+    if(reg_addr < MODBUS_REGS_CNT) {
+        reg_val = g_modbus_regs[reg_addr];
+    }
+
+    return reg_val;
 }
 
 static int modbus_ack_write(uint16_t reg_addr, uint16_t reg_val) {
@@ -241,8 +251,8 @@ int main(int argc, char **argv) {
             case 0:
                 reg_addr = rand() % MODBUS_REGS_CNT;
                 reg_value = rand() % 0x10000;
-                MODBUS_DEBUG("SLAVER: modbus_set_reg(%d, 0x%04X)\n", reg_addr, reg_value);
-                modbus_set_reg(reg_addr, reg_value);
+                MODBUS_DEBUG("SLAVER: modbus_write_reg(%d, 0x%04X)\n", reg_addr, reg_value);
+                modbus_write_reg(reg_addr, reg_value);
                 break;
             case 1:
                 reg_addr = rand() % MODBUS_REGS_CNT;
