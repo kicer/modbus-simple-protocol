@@ -119,7 +119,7 @@ static int modbus_ack_write(uint16_t reg_addr, uint16_t reg_val) {
         g_modbus_send[4] = (uint8_t)((reg_val>>8) & 0xFF);
         g_modbus_send[5] = (uint8_t)(reg_val & 0xFF);
 
-        CRC16(g_modbus_send, 6, g_modbus_send+6, g_modbus_send+7);
+        CRC16(g_modbus_send, 6, g_modbus_send+7, g_modbus_send+6);
         MODBUS_WAIT_SEND(8);
     }
 
@@ -139,7 +139,7 @@ static int modbus_ack_read(uint16_t reg_addr, uint16_t cnt) {
                 g_modbus_send[i+i+4] = (uint8_t)((g_modbus_regs[reg_addr+i])&0xFF);
             }
 
-            CRC16(g_modbus_send, cnt+cnt+3, g_modbus_send+cnt+cnt+3, g_modbus_send+cnt+cnt+4);
+            CRC16(g_modbus_send, cnt+cnt+3, g_modbus_send+cnt+cnt+4, g_modbus_send+cnt+cnt+3);
             MODBUS_WAIT_SEND((uint8_t)(5+cnt+cnt));
         }
     }
@@ -225,11 +225,11 @@ void modbus_recv_byte(uint8_t ch) {
             break;
         case 6:
             idx += 1;
-            if(ch != uchCRCHi) idx = 0;
+            if(ch != uchCRCLo) idx = 0;
             break;
         case 7:
             idx = 0;
-            if(ch == uchCRCLo) {
+            if(ch == uchCRCHi) {
             if(IS_DATA_LOCK()) {
             DATA_LOCK_PUSH(code, reg_addr, value);
             } else {
@@ -306,7 +306,7 @@ int main(int argc, char **argv) {
                 pkg[3] = (reg_addr >> 0) & 0xFF;
                 pkg[4] = (reg_value >> 8) & 0xFF;
                 pkg[5] = (reg_value >> 0) & 0xFF;
-                CRC16(pkg, 6, pkg+6, pkg+7);
+                CRC16(pkg, 6, pkg+7, pkg+6);
 
                 MODBUS_DEBUG("MASTER: MODBUS_FC_WRITE_SINGLE_REGISTER(%d, 0x%04x)\n", reg_addr, reg_value);
                 for(i=0; i<8; i++) {
@@ -328,7 +328,7 @@ int main(int argc, char **argv) {
                 pkg[3] = (reg_addr >> 0) & 0xFF;
                 pkg[4] = (reg_value >> 8) & 0xFF;
                 pkg[5] = (reg_value >> 0) & 0xFF;
-                CRC16(pkg, 6, pkg+6, pkg+7);
+                CRC16(pkg, 6, pkg+7, pkg+6);
 
                 MODBUS_DEBUG("MASTER: MODBUS_FC_READ_HOLDING_REGISTERS(%d, %d)\n", reg_addr, reg_value);
                 for(i=0; i<8; i++) {
