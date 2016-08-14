@@ -13,12 +13,13 @@ static uint8_t  g_modbus_send[MODBUS_SEND_BUF_SIZE];
 } while(0)
 
 enum {
-    LOCK_READ,
-    LOCK_WRITE
+    LOCK_READ = 1,
+    LOCK_WRITE = 2
 };
 
-static uint8_t g_lock_st   = 0;
-static uint8_t g_lock_code = 0;
+static uint8_t g_lock_st    = 0;
+static uint8_t g_lock_dev   = 0;
+static uint8_t g_lock_code  = 0;
 static uint16_t g_lock_reg  = 0;
 static uint16_t g_lock_val  = 0;
 
@@ -28,24 +29,25 @@ static uint16_t g_lock_val  = 0;
 
 #define IS_DATA_LOCK() (g_lock_st != 0)
 
-#define DATA_LOCK_PUSH(c,r,v) do { \
-    g_lock_code = (c);             \
-    g_lock_reg  = (r);             \
-    g_lock_val  = (v);             \
+#define DATA_LOCK_PUSH(d,c,r,v) do { \
+    g_lock_dev  = (d);               \
+    g_lock_code = (c);               \
+    g_lock_reg  = (r);               \
+    g_lock_val  = (v);               \
 } while(0)
 
-#define DATA_UNLOCK(t) do {                           \
-    if(IS_DATA_LOCK()) {                              \
-        g_lock_st = (0);                              \
-        switch(g_lock_code) {                         \
-            case MODBUS_FC_READ_HOLDING_REGISTERS:    \
-            modbus_ack_read(g_lock_reg, g_lock_val);  \
-            break;                                    \
-            case MODBUS_FC_WRITE_SINGLE_REGISTER:     \
-            modbus_ack_write(g_lock_reg, g_lock_val); \
-            break;                                    \
-        }                                             \
-    }                                                 \
+#define DATA_UNLOCK(t) do {                                       \
+    if(IS_DATA_LOCK()) {                                          \
+        g_lock_st = (0);                                          \
+        switch(g_lock_code) {                                     \
+            case MODBUS_FC_READ_HOLDING_REGISTERS:                \
+                                          modbus_ack_read(g_lock_dev, g_lock_reg, g_lock_val);  \
+            break;                                                \
+            case MODBUS_FC_WRITE_SINGLE_REGISTER:                 \
+                                          modbus_ack_write(g_lock_dev, g_lock_reg, g_lock_val); \
+            break;                                                \
+        }                                                         \
+    }                                                             \
 } while(0)
 
 /* Table of CRC values for highorder byte */
@@ -109,7 +111,7 @@ void CRC16 ( uint8_t *puchMsg, int usDataLen, uint8_t *CRCHi, uint8_t *CRCLo ) {
     *CRCLo = uchCRCLo;
 }
 
-static int modbus_ack_write(uint16_t reg_addr, uint16_t reg_val) {
+static int modbus_ack_write(uint8_t dev, uint16_t reg_addr, uint16_t reg_val) {
     if(reg_addr < MODBUS_REGS_CNT) {
         g_modbus_regs[reg_addr] = reg_val;
 
@@ -120,13 +122,13 @@ static int modbus_ack_write(uint16_t reg_addr, uint16_t reg_val) {
         g_modbus_send[5] = (uint8_t)(reg_val & 0xFF);
 
         CRC16(g_modbus_send, 6, g_modbus_send+7, g_modbus_send+6);
-        MODBUS_WAIT_SEND(8);
+        if(dev != 0) MODBUS_WAIT_SEND(8);
     }
 
     return 0;
 }
 
-static int modbus_ack_read(uint16_t reg_addr, uint16_t cnt) {
+static int modbus_ack_read(uint8_t dev, uint16_t reg_addr, uint16_t cnt) {
     int i;
 
     if(reg_addr < MODBUS_REGS_CNT) {
@@ -140,7 +142,7 @@ static int modbus_ack_read(uint16_t reg_addr, uint16_t cnt) {
             }
 
             CRC16(g_modbus_send, cnt+cnt+3, g_modbus_send+cnt+cnt+4, g_modbus_send+cnt+cnt+3);
-            MODBUS_WAIT_SEND((uint8_t)(5+cnt+cnt));
+            if(dev != 0) MODBUS_WAIT_SEND((uint8_t)(5+cnt+cnt));
         }
     }
 
@@ -196,7 +198,7 @@ void modbus_recv_byte(uint8_t ch) {
             uchCRCHi = 0xFF;
             uchCRCLo = 0xFF;
             dev = ch;
-            if(dev != g_modbus_dev_id) idx = 0;
+            if((dev != g_modbus_dev_id) && (dev != 0x00)) idx = 0;
             break;
         case 1:
             idx += 1;
@@ -230,18 +232,18 @@ void modbus_recv_byte(uint8_t ch) {
         case 7:
             idx = 0;
             if(ch == uchCRCHi) {
-            if(IS_DATA_LOCK()) {
-            DATA_LOCK_PUSH(code, reg_addr, value);
-            } else {
-                switch(code) {
-                    case MODBUS_FC_READ_HOLDING_REGISTERS:
-                    modbus_ack_read(reg_addr, value);
-                    break;
-                    case MODBUS_FC_WRITE_SINGLE_REGISTER:
-                    modbus_ack_write(reg_addr, value);
-                    break;
+                if(IS_DATA_LOCK()) {
+                    DATA_LOCK_PUSH(dev, code, reg_addr, value);
+                } else {
+                    switch(code) {
+                        case MODBUS_FC_READ_HOLDING_REGISTERS:
+                            modbus_ack_read(dev, reg_addr, value);
+                            break;
+                        case MODBUS_FC_WRITE_SINGLE_REGISTER:
+                            modbus_ack_write(dev, reg_addr, value);
+                            break;
+                    }
                 }
-            }
             }
             break;
     }
@@ -276,6 +278,9 @@ int modbus_ack_byte(void) {
 
 int main(int argc, char **argv) {
     int dev_id;
+
+    (void)(argc);
+    (void)(argv);
 
     srand(time(NULL));
 
